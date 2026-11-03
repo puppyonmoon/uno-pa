@@ -270,6 +270,11 @@ Round::DrawResult Round::draw(int seat) {
         result.error = "not your turn";
         return result;
     }
+    // 一回合只能摸一次：摸过之后只能出刚摸到的那张牌，或者 pass。
+    if (m_drew) {
+        result.error = "you have already drawn this turn";
+        return result;
+    }
 
     const int count = m_pending > 0 ? m_pending : 1;
     std::string error;
