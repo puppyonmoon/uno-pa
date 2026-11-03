@@ -188,7 +188,10 @@ Round::PlayResult Round::play(int seat, const std::vector<std::string>& cards,
 
     hand.erase(found);
     m_discard.push_back(card);
-    if (is_wild(card)) m_color = chosen;
+    // 有效颜色：万能牌用指定颜色，普通牌用这张牌自己的颜色。
+    // 规则是「万能牌指定的颜色一直生效到下一次打出非万能牌」，所以普通牌
+    // 必须把颜色刷新成自己，否则后面同色的牌会被误判为不匹配。
+    m_color = is_wild(card) ? chosen : card.color;
     m_drew = false;
 
     result.ok = true;

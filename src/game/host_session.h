@@ -81,7 +81,10 @@ private:
 
     // ---- 阶段二：一局的状态与消息 ---------------------------------------
     std::string hand_text(int seat) const;
+    Message hand_message(int seat) const;
     void send_hand(int seat);      // 只发给本人（房主没有连接，跳过）
+    void show_own_hand();          // 房主自己的手牌直接打印在终端
+    void print_local(const Message& message); // 把广播也显示给房主
     void broadcast_turn();         // 广播当前轮次视图
     void report(PeerId to, const std::string& text); // 有连接就回 ERROR，否则打印
     void play_at(PeerId from, int seat, const std::string& cards,

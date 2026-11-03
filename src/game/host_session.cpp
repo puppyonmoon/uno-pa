@@ -251,16 +251,31 @@ std::string HostSession::hand_text(int seat) const {
     return join_card_list(m_round->hand(seat));
 }
 
-// HAND 是私有信息：只发给本人。房主没有连接，手牌通过 cards 命令打印。
+Message HostSession::hand_message(int seat) const {
+    Message message("HAND");
+    message.set("cards", hand_text(seat));
+    return message;
+}
+
+// HAND 是私有信息：只发给本人。房主没有连接，手牌直接打印在终端。
 void HostSession::send_hand(int seat) {
     if (!m_round) return;
     if (seat < 0 || seat >= static_cast<int>(m_players.size())) return;
     const PeerId peer = m_players[static_cast<std::size_t>(seat)].peer;
     if (!peer.valid()) return;
 
-    Message message("HAND");
-    message.set("cards", hand_text(seat));
-    send_to(peer, std::move(message));
+    send_to(peer, hand_message(seat));
+}
+
+// 房主也是玩家：广播出去的消息自己也打印一份，否则终端上什么都看不到。
+void HostSession::print_local(const Message& message) {
+    out() << message.serialize() << "\n";
+    out().flush();
+}
+
+void HostSession::show_own_hand() {
+    if (!m_round) return;
+    print_local(hand_message(0));
 }
 
 void HostSession::broadcast_turn() {
@@ -273,6 +288,7 @@ void HostSession::broadcast_turn() {
     message.set("pending", view.pending);
     message.set("color", view.color);
     broadcast_to_players(message);
+    print_local(message);
 }
 
 // 房主自己敲的命令没有连接，错误打印到终端；客户端的错误只回给他本人。
@@ -300,12 +316,14 @@ void HostSession::play_at(PeerId from, int seat, const std::string& cards,
     played.set("cards", join_card_list(result.cards));
     if (!result.color.empty()) played.set("color", result.color);
     broadcast_to_players(played);
+    print_local(played);
 
     if (result.over) {
         finish_round(result.winner, result.points);
         return;
     }
-    send_hand(seat);
+    if (seat == 0) show_own_hand(); // 房主自己的手牌变化也要显示
+    else send_hand(seat);
     broadcast_turn();
 }
 
@@ -325,7 +343,9 @@ void HostSession::draw_at(PeerId from, int seat) {
     drawn.set("player", seat);
     drawn.set("count", result.count);
     broadcast_to_players(drawn);
-    send_hand(seat);
+    print_local(drawn);
+    if (seat == 0) show_own_hand();
+    else send_hand(seat);
     broadcast_turn();
 }
 
@@ -359,12 +379,15 @@ void HostSession::uno_at(PeerId from, int seat) {
         Message message("UNO");
         message.set("player", seat);
         broadcast_to_players(message);
+        print_local(message);
     } else {
         Message message("UNOPENALTY");
         message.set("player", seat);
         message.set("count", result.penalty);
         broadcast_to_players(message);
-        send_hand(seat);
+        print_local(message);
+        if (seat == 0) show_own_hand();
+        else send_hand(seat);
     }
 }
 
@@ -373,6 +396,7 @@ void HostSession::finish_round(int winner, int points) {
     message.set("winner", winner);
     message.set("points", points);
     broadcast_to_players(message);
+    print_local(message);
     m_round.reset();
     return_to_lobby();
 }
@@ -442,6 +466,7 @@ Session::Result HostSession::start(const Args&) {
     // 手册要求的顺序：先给每人发私有 HAND，再广播 START，最后广播 TURN。
     for (int seat = 0; seat < static_cast<int>(m_players.size()); ++seat)
         send_hand(seat);
+    show_own_hand(); // 房主没有连接，自己的手牌直接打印出来
     broadcast_to_players(Message("START"));
     broadcast_turn();
 
