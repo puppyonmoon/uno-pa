@@ -151,6 +151,10 @@ protected:
     virtual Result challenge(const Args& args) = 0;
     virtual Result swap(const Args& args) = 0;
 
+    // 游戏阶段的 exit / quit 走这里：默认只是本端回到大厅。
+    // client 覆写它，顺便发一条 LEAVE 通知主机；host 覆写它，广播 ABORTED。
+    virtual Result leave_game() { return Result::LeaveGame; }
+
     // 注册命令。handler 一般写成 [this](const Args& args) { return f(args); }。
     void add_lobby_command(std::string name, std::string usage,
                            std::string help, Handler handler,

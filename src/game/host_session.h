@@ -3,7 +3,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <map>
+#include <vector>
+#include "game/round.h"
 #include "game/session.h"
 #include "protocol/net.h"
 #include "protocol/unix.h"
@@ -57,10 +59,48 @@ protected:
     Result uno(const Args& args) override;
     Result challenge(const Args& args) override;
     Result swap(const Args& args) override;
+    // 游戏阶段 exit / quit：中止本局并通知所有客户端。
+    Result leave_game() override;
 
 private:
+    struct Player {
+	std::string name;
+	PeerId peer;
+    };
+    int seat_of(PeerId who) const; // 没 JOIN 过返回 -1
+    Player* player_by_arg(const std::string& arg); // kick: 先按座位号，再按名字
+    Message welcome_message(int seat) const;
+    Message players_message() const;
+    void broadcast_players();
+    void broadcast_to_players(Message message);
+    void reseat_from(int first_seat); // 前移座位并通知本人
+    bool send_error(PeerId who, const std::string& text);
+    void handle_join(PeerId from, const Message& message);
+    void handle_rename(PeerId from, const Message& message);
+    void handle_leave(PeerId from);
+
+    // ---- 阶段二：一局的状态与消息 ---------------------------------------
+    std::string hand_text(int seat) const;
+    void send_hand(int seat);      // 只发给本人（房主没有连接，跳过）
+    void broadcast_turn();         // 广播当前轮次视图
+    void report(PeerId to, const std::string& text); // 有连接就回 ERROR，否则打印
+    void play_at(PeerId from, int seat, const std::string& cards,
+                 const std::string& color);
+    void draw_at(PeerId from, int seat);
+    void pass_at(PeerId from, int seat);
+    void uno_at(PeerId from, int seat);
+    void finish_round(int winner, int points);
+    void handle_play(PeerId from, const Message& message);
+    void handle_draw(PeerId from);
+    void handle_pass(PeerId from);
+    void handle_uno(PeerId from, const Message& message);
+
+    std::vector<Player> m_players; // 下标 == 座位号，始终紧密
+    std::map<PeerId, int> m_seat_of; // 连接 -> 座位号
+    std::unique_ptr<Round> m_round; // 游戏阶段才有；回大厅时清空
     std::unique_ptr<Server> m_server;
     std::string m_room_path;
+
 };
 
 } // 命名空间 uno

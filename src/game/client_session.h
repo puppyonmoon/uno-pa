@@ -3,7 +3,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <map>
+#include <vector>
 #include "game/session.h"
 #include "protocol/net.h"
 #include "protocol/unix.h"
@@ -51,9 +52,22 @@ protected:
     Result uno(const Args& args) override;
     Result challenge(const Args& args) override;
     Result swap(const Args& args) override;
+    // 游戏阶段 exit / quit：回到大厅，并告诉主机「本局我退出」。
+    Result leave_game() override;
 
 private:
     PeerId m_host;
+    int m_seat = -1; // 最近一条 WELCOME 的 id
+    std::string m_display_name; // 最近一条 WELCOME/PLAYERS 里我的名字
+    std::map<int, std::string> m_roster; // 最近一条 PLAYERS 的名单
+
+    // 牌桌镜像（只用于显示，不参与判定）
+    std::vector<std::string> m_hand; // 最近一条 HAND
+    std::string m_top;               // 当前牌面
+    std::string m_color;             // 万能牌生效的颜色
+    int m_current = -1;              // 轮到谁
+    int m_direction = 1;             // +1 / -1
+    int m_pending = 0;               // 当前玩家面前的罚抽张数
 };
 
 } // 命名空间 uno

@@ -27,6 +27,8 @@ set(UNO_CORE_SOURCES
     src/game/session.cpp
     src/game/host_session.cpp
     src/game/client_session.cpp
+    src/game/card.cpp
+    src/game/round.cpp
 )
 
 add_library(uno_core STATIC ${UNO_CORE_SOURCES})

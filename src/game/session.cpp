@@ -54,9 +54,9 @@ Session::Session(Role role, std::string name, std::istream& in, std::ostream& ou
                      [this](const Args& args) { return swap(args); }, 1, 1);
     add_game_command("exit", "exit",
                      "abort this round and go back to the lobby",
-                     [](const Args&) { return Result::LeaveGame; });
+                     [this](const Args&) { return leave_game(); });
     add_game_command("quit", "quit", "same as exit",
-                     [](const Args&) { return Result::LeaveGame; });
+                     [this](const Args&) { return leave_game(); });
 
     // -----------------------------------------------------------------
     // 事件循环接线：框架负责「什么时候有事件」，子类负责「事件是什么」。
